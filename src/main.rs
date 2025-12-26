@@ -193,12 +193,21 @@ fn main() {
         let (gun, sword) = (&mut player.weapons.0, &mut player.weapons.1);
         let direction_angle = player.fields.direction.y.atan2(player.fields.direction.x);
 
-        gun.fields.rect.x = lerp(gun.fields.rect.x, player.fields.position.x + 30.0 * direction_angle.cos(), 0.5);
-        gun.fields.rect.y = lerp(gun.fields.rect.y, player.fields.position.y + 30.0 * direction_angle.sin(), 0.5);
+        let gun_offset = Vector2 {
+            x: 20.0 * direction_angle.cos() - 20.0 * direction_angle.sin(), 
+            y: 20.0 * direction_angle.sin() + 20.0 * direction_angle.cos()
+        };
+        let sword_offset = Vector2 { 
+            x: 50.0 * direction_angle.cos() - 20.0 * direction_angle.sin(), 
+            y: 50.0 * direction_angle.sin() + 20.0 * direction_angle.cos()
+        };
+
+        gun.fields.rect.x = lerp(gun.fields.rect.x, player.fields.position.x + gun_offset.x, 0.5);
+        gun.fields.rect.y = lerp(gun.fields.rect.y, player.fields.position.y + gun_offset.y, 0.5);
         gun.fields.rotation = direction_angle.to_degrees().add(90.0);
 
-        sword.fields.rect.x = lerp(sword.fields.rect.x, player.fields.position.x + 60.0 * direction_angle.cos(), 0.5);
-        sword.fields.rect.y = lerp(sword.fields.rect.y, player.fields.position.y + 60.0 * direction_angle.sin(), 0.5);
+        sword.fields.rect.x = lerp(sword.fields.rect.x, player.fields.position.x + sword_offset.x, 0.5);
+        sword.fields.rect.y = lerp(sword.fields.rect.y, player.fields.position.y + sword_offset.y, 0.5);
         sword.fields.rotation = direction_angle.to_degrees().add(90.0);
 
         let mut d = rl.begin_drawing(&thread);
