@@ -52,7 +52,7 @@ fn round_to_nearest(x: f32, a: f32, b: f32) -> f32 {
     } else { x }
 }
 
-fn bullet_handler(rl: &RaylibHandle, cooldown: &mut f32, player: &mut Player) {
+fn weapon_handler(rl: &RaylibHandle, cooldown: &mut f32, player: &mut Player) {
     let direction = &mut player.fields.direction;
     let bullets = &mut player.bullets;
     if rl.is_key_down(KeyboardKey::KEY_UP) { 
@@ -187,34 +187,24 @@ fn main() {
             } else { player.equipped = 0 }
         }
 
-        bullet_handler(&rl, &mut bullet_cooldown, &mut player);
+        weapon_handler(&rl, &mut bullet_cooldown, &mut player);
         enemy_handler(&rl, &mut enemies, &mut enemy_cooldown, &mut player, &mut rng);
 
         let (gun, sword) = (&mut player.weapons.0, &mut player.weapons.1);
-        let mut offset_gun = Vector2 {x: 30.0, y: -30.0};
-        let offset_sword = Vector2 {x: 70.0, y: 70.0};
+        let direction_angle = player.fields.direction.y.atan2(player.fields.direction.x);
 
-        if player.fields.direction.x == 0.0 {
-            offset_gun.y = 30.0;
-        }
-        if player.fields.direction.y == 0.0 {
-            offset_gun.y = 30.0;
-        }
+        gun.fields.rect.x = lerp(gun.fields.rect.x, player.fields.position.x + 30.0 * direction_angle.cos(), 0.5);
+        gun.fields.rect.y = lerp(gun.fields.rect.y, player.fields.position.y + 30.0 * direction_angle.sin(), 0.5);
+        gun.fields.rotation = direction_angle.to_degrees().add(90.0);
 
-        let rect_dir = Vector2::from(player.fields.direction).normalized();
-
-        gun.fields.rect.x = player.fields.position.x + offset_gun.x * rect_dir.x;
-        gun.fields.rect.y = player.fields.position.y + offset_gun.y * rect_dir.y;
-        gun.fields.rotation = (player.fields.direction.y / player.fields.direction.x).atan().to_degrees().add(-90.0);
-
-        sword.fields.rect.x = player.fields.position.x + offset_sword.x * rect_dir.x;
-        sword.fields.rect.y = player.fields.position.y + offset_sword.y * rect_dir.y;
-        sword.fields.rotation = (player.fields.direction.y / player.fields.direction.x).atan().to_degrees().add(90.0);
+        sword.fields.rect.x = lerp(sword.fields.rect.x, player.fields.position.x + 60.0 * direction_angle.cos(), 0.5);
+        sword.fields.rect.y = lerp(sword.fields.rect.y, player.fields.position.y + 60.0 * direction_angle.sin(), 0.5);
+        sword.fields.rotation = direction_angle.to_degrees().add(90.0);
 
         let mut d = rl.begin_drawing(&thread);
         d.clear_background(Color::WHITE);
         d.draw_text("Hello, world!", 12, 12, 20, Color::BLACK);
-        d.draw_text(format!("x: {:.1?}, y: {:.1?}, bullets: {}, direction: {}, {}", velocity.x, velocity.y, player.bullets.len(), player.fields.direction.x, player.fields.direction.y).as_str(), 12, HEIGHT as i32-40, 20, Color::BLACK);
+        d.draw_text(format!("x: {:.1?}, y: {:.1?}, bullets: {}, direction: {}, {}, {:.1?} degrees", velocity.x, velocity.y, player.bullets.len(), player.fields.direction.x, player.fields.direction.y, direction_angle.to_degrees()).as_str(), 12, HEIGHT as i32-40, 20, Color::BLACK);
         d.draw_circle_v(player.fields.position, player.fields.radius, player.fields.color);
         if player.equipped == 0 {
             d.draw_rectangle_pro(gun.fields.rect, gun.fields.origin, gun.fields.rotation, gun.fields.color);
