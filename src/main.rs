@@ -22,12 +22,13 @@ struct Rectangle {
 }
 
 struct Sword {
-    fields: Rectangle
+    fields: Rectangle,
+    offset: Vector2
 }
 
 struct Gun {
-    fields: Rectangle
-
+    fields: Rectangle,
+    offset: Vector2
 }
 
 #[derive(Copy, Clone)] 
@@ -156,14 +157,16 @@ fn main() {
                     origin: ffi::Vector2 {x: 5.0, y: 10.0}, 
                     rotation: 0.0, 
                     color: Color::GRAY 
-                }
+                },
+                offset: Vector2 { x: 20.0, y: 20.0 }
             }, Sword {
                 fields: Rectangle { 
                     rect: ffi::Rectangle { x: 0.0, y: 0.0, width: 20.0, height: 80.0 }, 
                     origin: ffi::Vector2 {x: 10.0, y: 40.0}, 
                     rotation: 0.0, 
                     color: Color::SILVER 
-                }
+                },
+                offset: Vector2 { x: 50.0, y: 20.0 }
             },
         ),
         equipped: 0
@@ -194,12 +197,12 @@ fn main() {
         let direction_angle = player.fields.direction.y.atan2(player.fields.direction.x);
 
         let gun_offset = Vector2 {
-            x: 20.0 * direction_angle.cos() - 20.0 * direction_angle.sin(), 
-            y: 20.0 * direction_angle.sin() + 20.0 * direction_angle.cos()
+            x: gun.offset.x * direction_angle.cos() - gun.offset.y * direction_angle.sin(), 
+            y: gun.offset.x * direction_angle.sin() + gun.offset.y * direction_angle.cos()
         };
         let sword_offset = Vector2 { 
-            x: 50.0 * direction_angle.cos() - 20.0 * direction_angle.sin(), 
-            y: 50.0 * direction_angle.sin() + 20.0 * direction_angle.cos()
+            x: sword.offset.x * direction_angle.cos() - sword.offset.y * direction_angle.sin(), 
+            y: sword.offset.x * direction_angle.sin() + sword.offset.y * direction_angle.cos()
         };
 
         gun.fields.rect.x = lerp(gun.fields.rect.x, player.fields.position.x + gun_offset.x, 0.5);
