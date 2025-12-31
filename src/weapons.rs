@@ -1,11 +1,15 @@
-use crate::shapes::{RectanglePro, BallEnt};
+use crate::basic::{RectanglePro, BallEnt};
 use crate::entities::{Player};
+use crate::utils::Cooldown;
 use raylib::{color::Color, prelude::*};
 use std::{ops::Add};
 use crate::{WIDTH, HEIGHT};
+
 pub struct Sword {
     pub fields: RectanglePro,
     pub offset: Vector2,
+    pub level: u128,
+    pub damage: f32,
     pub is_swinging: bool,
     pub swing_progress: f32
 }
@@ -19,6 +23,8 @@ impl Sword {
                 rotation: 0.0, 
                 color: Color::SILVER 
             },
+            level: 0,
+            damage: 0.0,
             offset: Vector2 { x: 35.0, y: 0.0 },
             is_swinging: false,
             swing_progress: 75.0
@@ -27,11 +33,18 @@ impl Sword {
     pub fn swing(&mut self) {
         self.is_swinging = true;
     }
+    pub fn add_level(&mut self) {
+        self.level += 1;
+        self.damage += 1.0 / self.level as f32;
+    }
 }
 
 pub struct Gun {
     pub fields: RectanglePro,
-    pub offset: Vector2
+    pub offset: Vector2,
+    pub level: u128,
+    pub reload: Cooldown,
+    pub bullets: Vec<Bullet>,
 }
 
 impl Gun {
@@ -43,8 +56,18 @@ impl Gun {
                 rotation: 0.0, 
                 color: Color::GRAY 
             },
-            offset: Vector2 { x: 20.0, y: 20.0 }
+            offset: Vector2 { x: 20.0, y: 20.0 },
+            level: 1,
+            reload: Cooldown { 
+                cooldown: 10.0, 
+                cooldown_value: 0.0 
+            },
+            bullets: Vec::new()
         }
+    }
+    pub fn add_level(&mut self) {
+        self.level += 1;
+        self.reload.cooldown -= 5.0 / self.level as f32;
     }
 }
 
@@ -56,11 +79,11 @@ pub struct Bullet {
 }
 
 impl Bullet {
-    pub fn new(player: &Player) -> Self {
+    pub fn new(gun: &Gun) -> Self {
         Self {
             fields: BallEnt {
-                position: Vector2 { x: player.weapons.0.fields.rect.x, y: player.weapons.0.fields.rect.y },
-                direction: Vector2::from(player.fields.direction).normalized(),
+                position: Vector2 { x: gun.fields.rect.x, y: gun.fields.rect.y },
+                direction: Vector2::from(Vector2 {x: gun.fields.rotation.add(-90.0).to_radians().cos(), y: gun.fields.rotation.add(-90.0).to_radians().sin()}).normalized(),
                 speed: 500.0,
                 radius: 5.0,
                 color: Color::GOLD
@@ -71,11 +94,10 @@ impl Bullet {
     }
 }
 
-pub fn weapon_handler(rl: &RaylibHandle, cooldown: &mut f32, player: &mut Player) {
+pub fn weapon_handler(rl: &RaylibHandle, player: &mut Player) {
     let direction = &mut player.fields.direction;
     let direction_angle = direction.y.atan2(direction.x);
     let (gun, sword) = (&mut player.weapons.0, &mut player.weapons.1);
-    let bullet_cooldown: f32 = 10.0;
     let rotation_smoothing = 0.35;
 
     const MAX_BOUNCES: u8 = 1;
@@ -111,12 +133,15 @@ pub fn weapon_handler(rl: &RaylibHandle, cooldown: &mut f32, player: &mut Player
     
     if rl.is_key_pressed(KeyboardKey::KEY_C) {
         if player.equipped + 1 > 1 { player.equipped = 0 } else { player.equipped += 1 }
+        if player.equipped == 1 && sword.level == 0 { player.equipped = 0 }
     }
     if rl.is_key_pressed(KeyboardKey::KEY_SPACE) { sword.swing() }
 
+    let recoil_x = gun.offset.x - (5.0 * gun.reload.cooldown_value / gun.reload.cooldown);
+
     let gun_offset = Vector2 {
-        x: gun.offset.x * direction_angle.cos() - gun.offset.y * direction_angle.sin(), 
-        y: gun.offset.x * direction_angle.sin() + gun.offset.y * direction_angle.cos()
+        x: recoil_x * direction_angle.cos() - gun.offset.y * direction_angle.sin(), 
+        y: recoil_x * direction_angle.sin() + gun.offset.y * direction_angle.cos()
     };
     
     let sword_offset = Vector2 { 
@@ -142,14 +167,14 @@ pub fn weapon_handler(rl: &RaylibHandle, cooldown: &mut f32, player: &mut Player
     sword.fields.rotation = lerp(sword.fields.rotation, direction_angle.add((-PI/4.0) as f32).to_degrees(), 0.5).add(sword.swing_progress);
 
     if rl.is_key_down(KeyboardKey::KEY_LEFT) || rl.is_key_down(KeyboardKey::KEY_RIGHT) || rl.is_key_down(KeyboardKey::KEY_DOWN) || rl.is_key_down(KeyboardKey::KEY_UP) {
-        if *cooldown <= 0.0 && player.equipped == 0 {
-            let bullet = Bullet::new(player);
-            player.bullets.push(bullet);
-            if player.damage.hitpoint != 0 { *cooldown = bullet_cooldown } else { *cooldown = bullet_cooldown/5.0 }
+        if gun.reload.cooldown_value <= 0.0 && player.equipped == 0 {
+            let bullet = Bullet::new(gun);
+            gun.bullets.push(bullet);
+            if player.damage.hitpoint != 0 { gun.reload.cooldown_value = gun.reload.cooldown } else { gun.reload.cooldown_value = gun.reload.cooldown/5.0 }
         }
     }
-    *cooldown = (*cooldown - 10.0 * rl.get_frame_time()).max(0.0);
-    player.bullets.retain_mut(|bullet| {
+    gun.reload.cooldown_value = (gun.reload.cooldown_value - 10.0 * rl.get_frame_time()).max(0.0);
+    gun.bullets.retain_mut(|bullet| {
         if bullet.fields.position.x <= 0.0 || bullet.fields.position.x >= WIDTH { bullet.fields.direction.x = -bullet.fields.direction.x; bullet.bounces += 1 }
         if bullet.fields.position.y <= 0.0 || bullet.fields.position.y >= HEIGHT { bullet.fields.direction.y = -bullet.fields.direction.y; bullet.bounces += 1 }
         let velocity = Vector2::scale_by(&bullet.fields.direction, bullet.fields.speed * rl.get_frame_time());
