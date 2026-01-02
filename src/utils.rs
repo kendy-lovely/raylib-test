@@ -1,11 +1,13 @@
 use raylib::{RaylibHandle, ffi::KeyboardKey};
 use crate::entities::{Level, Player};
 
+#[derive(Clone)]
 pub struct DamageSystem {
     pub hitpoint: u8,
     pub damage_cooldown: Cooldown
 }
 
+#[derive(Clone)]
 pub struct Cooldown {
     pub cooldown: f32,
     pub cooldown_value: f32

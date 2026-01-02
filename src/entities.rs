@@ -19,7 +19,8 @@ pub struct Player {
     pub weapons: (Gun, Sword),
     pub equipped: usize,
     pub kill_count: u128,
-    pub damage: DamageSystem
+    pub damage: DamageSystem,
+    pub hit_by: Enemy
 }
 
 impl Player {
@@ -41,7 +42,8 @@ impl Player {
                 damage_cooldown: Cooldown {
                     cooldown: 30.0,
                     cooldown_value: 0.0
-                } }
+                } },
+            hit_by: Enemy::new(&0)
         }
     }
     
@@ -50,6 +52,7 @@ impl Player {
     }
 }
 
+#[derive(Clone)]
 pub struct Enemy { 
     pub fields: BallEnt, 
     pub damage: DamageSystem
@@ -86,21 +89,31 @@ impl Enemy {
     }
 }
 
-pub fn player_handler(rl: &RaylibHandle, player: &mut Player, input: &Vector2, level: &mut Level) -> Vector2 {
-    let velocity: Vector2 = input.normalized().scale_by(player.fields.speed * rl.get_frame_time()) * (player.damage.damage_cooldown.cooldown_value / 10.0).max(1.0);
-    player.fields.position += velocity;
+pub fn player_handler(rl: &RaylibHandle, player: &mut Player, input: &Vector2, level: &mut Level) -> i32 {
+    let mut shake: i32 = 0;
+    let mut velocity: Vector2 = input.normalized().scale_by(player.fields.speed * rl.get_frame_time()) * (player.damage.damage_cooldown.cooldown_value / 10.0).max(1.0);
 
     if player.kill_count as f32 % 20.0 == 0.0 && player.kill_count != 0 && !level.prompt.has_chosen { level.prompt.prompt(&player) }
 
     for enemy in &level.enemies {
+        
         player.damage.damage_cooldown.cooldown_value = (player.damage.damage_cooldown.cooldown_value - 10.0 * rl.get_frame_time()).max(0.0);
         if player.damage.damage_cooldown.cooldown_value <= 0.0 && check_collision_circles(player.fields.position, player.fields.radius, enemy.fields.position, enemy.fields.radius) {
             if player.supposed_to_be_dead() { unsafe { ffi::CloseWindow() } }
             player.damage.hitpoint -= 1;
             player.damage.damage_cooldown.cooldown_value = player.damage.damage_cooldown.cooldown;
+            player.hit_by = enemy.clone();
         }
     }
-    velocity
+    if player.damage.damage_cooldown.cooldown_value > 20.0 {
+        let angle_to_enemy = player.fields.position.angle_to(player.hit_by.fields.position);
+        let mut rng = rand::rng();
+        let shake_value = ((player.damage.damage_cooldown.cooldown_value - 20.0) * 20.0) as i32;
+        shake = rng.random_range(-shake_value..=shake_value);
+        velocity = velocity - Vector2 {x: angle_to_enemy.cos(), y: angle_to_enemy.sin()}.scale_by(player.damage.damage_cooldown.cooldown_value / 5.0);
+    }
+    player.fields.position += velocity;
+    shake
 }
 
 pub fn enemy_handler(rl: &RaylibHandle, level: &mut Level, player: &mut Player) {

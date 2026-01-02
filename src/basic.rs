@@ -31,9 +31,9 @@ impl RectanglePro {
 
         let sides: Vec<(Vector2, Vector2)> = corners
             .windows(2)
-            .map(|corners| (corners[0], corners[1]))
+            .map(|c| (c[0], c[1]))
             .into_iter()
-            .chain(vec![(corners[3], corners[0])].into_iter())
+            .chain([(corners[3], corners[0])].into_iter())
             .collect(); 
         
         sides

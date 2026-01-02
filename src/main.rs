@@ -28,7 +28,7 @@ fn main() {
         target: player.fields.position, 
         rotation: 0.0, 
         zoom: 1.2 };
-    let camera_lookahead = 10.0;
+    let camera_lookahead = 12.5;
     let mut level = Level {
         enemies: Vec::new(),
         enemy_cooldown: Cooldown {
@@ -47,13 +47,13 @@ fn main() {
         if rl.is_key_down(KeyboardKey::KEY_S) { input.y += 1.0; }
         if rl.is_key_down(KeyboardKey::KEY_D) { input.x += 1.0; }
 
-        let velocity = player_handler(&rl, &mut player, &input, &mut level);
+        let shake = player_handler(&rl, &mut player, &input, &mut level);
         weapon_handler(&rl, &mut player); 
         enemy_handler(&rl, &mut level, &mut player);
 
         camera.target = Vector2 { 
-            x: lerp(camera.target.x, player.fields.position.x.add(velocity.x * camera_lookahead), 0.1),
-            y: lerp(camera.target.y, player.fields.position.y.add(velocity.y * camera_lookahead), 0.1)
+            x: lerp(camera.target.x, player.fields.position.x.add(player.fields.direction.x * camera_lookahead + shake as f32), camera_lookahead / 100.0),
+            y: lerp(camera.target.y, player.fields.position.y.add(player.fields.direction.y * camera_lookahead + shake as f32), camera_lookahead / 100.0)
         };
         
         let mut d = rl.begin_drawing(&thread);
