@@ -42,10 +42,12 @@ fn main() {
         if level.prompt.appear { Prompt::select(&mut level, &mut rl, &mut player) }
         
         let mut input = Vector2::new(0.0, 0.0);
-        if rl.is_key_down(KeyboardKey::KEY_W) { input.y -= 1.0; }
-        if rl.is_key_down(KeyboardKey::KEY_A) { input.x -= 1.0; }
-        if rl.is_key_down(KeyboardKey::KEY_S) { input.y += 1.0; }
-        if rl.is_key_down(KeyboardKey::KEY_D) { input.x += 1.0; }
+        if player.damage.damage_cooldown.cooldown_value < 20.0 {
+            if rl.is_key_down(KeyboardKey::KEY_W) { input.y -= 1.0; }
+            if rl.is_key_down(KeyboardKey::KEY_A) { input.x -= 1.0; }
+            if rl.is_key_down(KeyboardKey::KEY_S) { input.y += 1.0; }
+            if rl.is_key_down(KeyboardKey::KEY_D) { input.x += 1.0; }
+        }
 
         let shake = player_handler(&rl, &mut player, &input, &mut level);
         weapon_handler(&rl, &mut player); 
@@ -73,12 +75,8 @@ fn main() {
             let (gun, sword) = &player.weapons;
 
             match player.equipped {
-                0 => {
-                    d.draw_rectangle_pro(gun.fields.rect, gun.fields.origin, gun.fields.rotation, gun.fields.color);
-                }
-                1 => {
-                    d.draw_rectangle_pro(sword.fields.rect, sword.fields.origin, sword.fields.rotation, sword.fields.color);
-                }
+                0 => d.draw_rectangle_pro(gun.fields.rect, gun.fields.origin, gun.fields.rotation, gun.fields.color),
+                1 => d.draw_rectangle_pro(sword.fields.rect, sword.fields.origin, sword.fields.rotation, sword.fields.color),
                 _ => {}
             }
 

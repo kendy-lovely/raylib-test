@@ -91,7 +91,7 @@ impl Enemy {
 
 pub fn player_handler(rl: &RaylibHandle, player: &mut Player, input: &Vector2, level: &mut Level) -> i32 {
     let mut shake: i32 = 0;
-    let mut velocity: Vector2 = input.normalized().scale_by(player.fields.speed * rl.get_frame_time()) * (player.damage.damage_cooldown.cooldown_value / 10.0).max(1.0);
+    let mut velocity: Vector2 = input.normalized().scale_by(player.fields.speed * rl.get_frame_time()).scale_by((player.damage.damage_cooldown.cooldown_value / 5.0).max(1.0));
 
     if player.kill_count as f32 % 20.0 == 0.0 && player.kill_count != 0 && !level.prompt.has_chosen { level.prompt.prompt(&player) }
 
@@ -100,7 +100,7 @@ pub fn player_handler(rl: &RaylibHandle, player: &mut Player, input: &Vector2, l
         player.damage.damage_cooldown.cooldown_value = (player.damage.damage_cooldown.cooldown_value - 10.0 * rl.get_frame_time()).max(0.0);
         if player.damage.damage_cooldown.cooldown_value <= 0.0 && check_collision_circles(player.fields.position, player.fields.radius, enemy.fields.position, enemy.fields.radius) {
             if player.supposed_to_be_dead() { unsafe { ffi::CloseWindow() } }
-            player.damage.hitpoint -= 1;
+            player.damage.hitpoint = player.damage.hitpoint.saturating_sub(1);
             player.damage.damage_cooldown.cooldown_value = player.damage.damage_cooldown.cooldown;
             player.hit_by = enemy.clone();
         }
