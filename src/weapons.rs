@@ -4,6 +4,38 @@ use crate::utils::Cooldown;
 use raylib::{color::Color, prelude::*};
 use std::{ops::Add};
 use crate::{WIDTH, HEIGHT};
+ 
+pub enum Weapon {
+    GunW(Gun),
+    SwordW(Sword)
+}
+
+impl Weapon {
+    pub fn get_sword_mut(&mut self) -> Option<&mut Sword> {
+        match self {
+            Self::SwordW(sword) => Some(sword),
+            _ => None
+        }
+    }
+    pub fn get_gun_mut(&mut self) -> Option<&mut Gun> {
+        match self {
+            Self::GunW(gun) => Some(gun),
+            _ => None
+        }
+    }
+    pub fn get_sword(&self) -> Option<&Sword> {
+        match self {
+            Self::SwordW(sword) => Some(sword),
+            _ => None
+        }
+    }
+    pub fn get_gun(&self) -> Option<&Gun> {
+        match self {
+            Self::GunW(gun) => Some(gun),
+            _ => None
+        }
+    }
+}
 
 pub struct Sword {
     pub fields: RectanglePro,
@@ -18,14 +50,15 @@ impl Sword {
     pub fn new() -> Self {
         Self {
             fields: RectanglePro { 
-                rect: ffi::Rectangle { x: 0.0, y: 0.0, width: 80.0, height: 20.0 }, 
+                
+                rect: ffi::Rectangle { x: 0.0, y: 0.0, width: HEIGHT/(720.0/80.0), height: HEIGHT/(720.0/20.0) }, 
                 origin: ffi::Vector2 {x: 0.0, y: 0.0}, 
                 rotation: 0.0, 
                 color: Color::SILVER 
             },
             level: 0,
             damage: 0.0,
-            offset: Vector2 { x: 35.0, y: 0.0 },
+            offset: Vector2 { x: HEIGHT/20.0, y: 0.0 },
             is_swinging: false,
             swing_progress: 75.0
         }
@@ -51,12 +84,12 @@ impl Gun {
     pub fn new() -> Self {
         Self {
             fields: RectanglePro { 
-                rect: ffi::Rectangle { x: 0.0, y: 0.0, width: 10.0, height: 20.0 }, 
-                origin: ffi::Vector2 {x: 5.0, y: 10.0}, 
+                rect: ffi::Rectangle { x: 0.0, y: 0.0, width: HEIGHT/72.0, height: HEIGHT/36.0 }, 
+                origin: ffi::Vector2 {x: HEIGHT/144.0, y: HEIGHT/72.0}, 
                 rotation: 0.0, 
-                color: Color::GRAY 
+                color: Color::GRAY
             },
-            offset: Vector2 { x: 20.0, y: 20.0 },
+            offset: Vector2 { x: HEIGHT/36.0, y: HEIGHT/36.0 },
             level: 1,
             reload: Cooldown { 
                 cooldown: 10.0, 
@@ -84,8 +117,8 @@ impl Bullet {
             fields: BallEnt {
                 position: Vector2 { x: gun.fields.rect.x, y: gun.fields.rect.y },
                 direction: Vector2::from(Vector2 {x: gun.fields.rotation.add(-90.0).to_radians().cos(), y: gun.fields.rotation.add(-90.0).to_radians().sin()}).normalized(),
-                speed: 500.0,
-                radius: 5.0,
+                speed: HEIGHT/(720.0/500.0),
+                radius: HEIGHT/144.0,
                 color: Color::GOLD
             },
             bounces: 0,
@@ -97,7 +130,6 @@ impl Bullet {
 pub fn weapon_handler(rl: &RaylibHandle, player: &mut Player) {
     let direction = &mut player.fields.direction;
     let direction_angle = direction.y.atan2(direction.x);
-    let (gun, sword) = (&mut player.weapons.0, &mut player.weapons.1);
     let rotation_smoothing = 0.35;
 
     const MAX_BOUNCES: u8 = 1;
@@ -130,29 +162,19 @@ pub fn weapon_handler(rl: &RaylibHandle, player: &mut Player) {
             *direction = Vector2 { 
                 x: lerp(direction.x, 1.0, rotation_smoothing), 
                 y: lerp(direction.y, 0.0, rotation_smoothing) }}}
-    
+
+    let sword = player.weapons[1].get_sword_mut().unwrap();
+
     if rl.is_key_pressed(KeyboardKey::KEY_C) {
         if player.equipped + 1 > 1 { player.equipped = 0 } else { player.equipped += 1 }
         if player.equipped == 1 && sword.level == 0 { player.equipped = 0 }
     }
     if rl.is_key_pressed(KeyboardKey::KEY_SPACE) { sword.swing() }
-
-    let recoil_x = gun.offset.x - (5.0 * gun.reload.cooldown_value / gun.reload.cooldown);
-
-    let gun_offset = Vector2 {
-        x: recoil_x * direction_angle.cos() - gun.offset.y * direction_angle.sin(), 
-        y: recoil_x * direction_angle.sin() + gun.offset.y * direction_angle.cos()
-    };
     
     let sword_offset = Vector2 { 
         x: sword.offset.x * direction_angle.add((-PI/2.0) as f32 + sword.swing_progress.to_radians()).cos() - sword.offset.y * direction_angle.add((-PI/2.0) as f32 + sword.swing_progress.to_radians()).sin(), 
         y: sword.offset.x * direction_angle.add((-PI/2.0) as f32 + sword.swing_progress.to_radians()).sin() + sword.offset.y * direction_angle.add((-PI/2.0) as f32 + sword.swing_progress.to_radians()).cos()
     };
-
-    gun.fields.rect.x = player.fields.position.x + gun_offset.x;
-    gun.fields.rect.y = player.fields.position.y + gun_offset.y;
-    gun.fields.rotation = lerp(gun.fields.rotation, direction_angle.to_degrees().add(90.0), 0.5);
-
     
     if sword.swing_progress <= 0.0 { sword.is_swinging = false }
     if sword.is_swinging { sword.swing_progress = lerp(sword.swing_progress, -1.0, 0.25) } 
@@ -165,6 +187,19 @@ pub fn weapon_handler(rl: &RaylibHandle, player: &mut Player) {
         height: sword.fields.rect.height
     };
     sword.fields.rotation = lerp(sword.fields.rotation, direction_angle.add((-PI/4.0) as f32).to_degrees(), 0.5).add(sword.swing_progress);
+    
+    let gun = player.weapons[0].get_gun_mut().unwrap();
+
+    let recoil_x = gun.offset.x - (5.0 * gun.reload.cooldown_value / gun.reload.cooldown);
+
+    let gun_offset = Vector2 {
+        x: recoil_x * direction_angle.cos() - gun.offset.y * direction_angle.sin(), 
+        y: recoil_x * direction_angle.sin() + gun.offset.y * direction_angle.cos()
+    };
+
+    gun.fields.rect.x = player.fields.position.x + gun_offset.x;
+    gun.fields.rect.y = player.fields.position.y + gun_offset.y;
+    gun.fields.rotation = lerp(gun.fields.rotation, direction_angle.to_degrees().add(90.0), 0.5);
 
     if rl.is_key_down(KeyboardKey::KEY_LEFT) || rl.is_key_down(KeyboardKey::KEY_RIGHT) || rl.is_key_down(KeyboardKey::KEY_DOWN) || rl.is_key_down(KeyboardKey::KEY_UP) {
         if gun.reload.cooldown_value <= 0.0 && player.equipped == 0 {

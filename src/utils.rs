@@ -1,13 +1,13 @@
 use raylib::{RaylibHandle, ffi::KeyboardKey};
 use crate::entities::{Level, Player};
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct DamageSystem {
     pub hitpoint: u8,
     pub damage_cooldown: Cooldown
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct Cooldown {
     pub cooldown: f32,
     pub cooldown_value: f32
@@ -29,7 +29,7 @@ impl Prompt {
     }
     pub fn prompt(&mut self, player: &Player) {
         self.appear = true;
-        let (gun, sword) = &player.weapons;
+        let (gun, sword) = (player.weapons[0].get_gun().unwrap(), player.weapons[1].get_sword().unwrap());
         match gun.level {
             0 => self.text.0 = format!("Get new weapon\nGun; Q"),
             _ => self.text.0 = format!("Upgrade Gun\nto level {}; Q", gun.level + 1)
@@ -41,30 +41,31 @@ impl Prompt {
         
     }
     pub fn select(level: &mut Level, rl: &mut RaylibHandle, player: &mut Player) {
-        let (gun, sword) = &mut player.weapons;
         let input = rl.get_key_pressed();
-            match input {
-                Some(i) => { match i {
-                    KeyboardKey::KEY_Q => { 
-                        gun.add_level(); 
-                        level.prompt.has_chosen = true; 
-                        level.prompt.appear = false; 
-                        player.damage.hitpoint += 1;
-                        player.level += 1;
-                        level.enemy_cooldown.cooldown -= player.level as f32 / 3.5
-                    }
-                    KeyboardKey::KEY_E => { 
-                        sword.add_level(); 
-                        level.prompt.has_chosen = true; 
-                        level.prompt.appear = false; 
-                        player.damage.hitpoint += 1;
-                        player.level += 1;
-                        level.enemy_cooldown.cooldown -= player.level as f32 / 3.5
-                    }
-                    _ => {}
-                }}
-                None => {}
-            }
+        match input {
+            Some(i) => { match i {
+                KeyboardKey::KEY_Q => { 
+                    let gun = player.weapons[0].get_gun_mut().unwrap();
+                    gun.add_level(); 
+                    level.prompt.has_chosen = true; 
+                    level.prompt.appear = false; 
+                    player.damage.hitpoint += 1;
+                    player.level += 1;
+                    level.enemy_cooldown.cooldown -= player.level as f32 / 3.5
+                }
+                KeyboardKey::KEY_E => { 
+                    let sword = player.weapons[1].get_sword_mut().unwrap();
+                    sword.add_level(); 
+                    level.prompt.has_chosen = true; 
+                    level.prompt.appear = false; 
+                    player.damage.hitpoint += 1;
+                    player.level += 1;
+                    level.enemy_cooldown.cooldown -= player.level as f32 / 3.5
+                }
+                _ => {}
+            }}
+            None => {}
+        }
     }
 }
 
